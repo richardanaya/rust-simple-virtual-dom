@@ -9,9 +9,9 @@ Our one saving grace is that javascript has access to the memory of our WASM app
 1) the start of the string
 2) the length of the string
 
-In this project, it might be easiest to see how this is done by looking at the `log` function in WASM. We have a helper function `log` that calls a javascript function `js_log`. `log` creates a C string type, and we can get a pointer which represents the memory location to send to javascript.
+In this project, it might be easiest to see how this is done by looking at the `log` function in WASM. We have a helper function `log` that calls a javascript function `js_log`. `log` creates a C string type, and we can get a pointer which represents the memory location to send to javascript. Javascript can then iterate through those characters and form a string of it's own to do some action with.
 
-We'll be using multiple functions that pass along strings to javascript to perform various DOM manipulation, so whenever you see a start and length its talking about a string.
+We'll be using multiple functions that pass along strings to javascript to perform various DOM manipulation, so whenever you see a start and length its talking about a string being sent over the WASM-JS bridge.
 
 # DOM management
 
