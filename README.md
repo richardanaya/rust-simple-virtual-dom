@@ -47,6 +47,7 @@ In this example i'm making a pretty massive simplification: **this is a virtual 
 This simplification makes it alot easier to see the basic operations going on. In Rust we represent VirtualDom as follows.
 
 ```Rust
+// ElementNode represents an html element
 struct ElementNode {
     node_type: String,
     children: Vec<VirtualDomNode>
