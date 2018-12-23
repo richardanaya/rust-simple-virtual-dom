@@ -87,6 +87,14 @@ impl VirtualDom {
 }
 ```
 
+For a simple html:
+
+```html
+<div>
+    <h1>hello!</h1>
+</div>
+```
+
 A simple tree of DOM might be represented thus as:
 
 ```rust
