@@ -52,23 +52,23 @@ fetch('target/wasm32-unknown-unknown/release/simple-virtual-dom.wasm')
      var childElement = elementCache[child];
      parentElement.append(childElement);
    },
-   js_remove_child: function(parent,index){
+   js_remove_child: function(parent,childIndex){
      var parentElement = elementCache[parent];
      parentElement.removeChild(
-      parentElement.childNodes[index]
+      parentElement.childNodes[childIndex]
      );
    },
-   js_get_child: function(parent,idx){
+   js_get_child: function(parent,childIndex){
      var parentElement = elementCache[parent];
-     var el = parentElement.childNodes[idx];
+     var el = parentElement.childNodes[childIndex];
      var index = elementCache.length;
      elementCache.push(el);
      return index;
    },
-   js_replace_child: function(parent,child,index){
+   js_replace_child: function(parent, childIndex, child){
      var parentElement = elementCache[parent];
      var childElement = elementCache[child];
-     parentElement.replaceChild(childElement,parentElement.childNodes[index]);
+     parentElement.replaceChild(childElement,parentElement.childNodes[childIndex]);
    },
  }
 }))
