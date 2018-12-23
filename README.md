@@ -85,7 +85,7 @@ impl VirtualDom {
 
     // Compares two virtual dom tree structures and updates the real DOM
     // then stores the new dom tree for future comparisons
-    fn render(&mut self, el:i32, new_node:VirtualDomNode){
+    fn render(&mut self, el:DomNode, new_node:VirtualDomNode){
         // TODO: some magical comparisons that updates the contents of el
         self.node = new_node;
     }
@@ -173,7 +173,7 @@ vd.render(body, h("div",vec![
 Let's consider what happens on the first rendering.  We have a virtual dom tree with an `Empty` node in it, and some new virtual dom tree coming in that has elements and text. Our tree comparison is simple in this first rendering since we only have all new nodes we need to create real DOM elements for. So let's look how we might create that tree of real DOM. We have three scenerios to handle:
 
 ```rust
-fn create_element_from_node(node:&VirtualDomNode) -> i32 {
+fn create_element_from_node(node:&VirtualDomNode) -> DomNode {
     match node {
         VirtualDomNode::VirtualElementNode(vnode) => {
             let el = create_element(&vnode.node_type);
@@ -209,7 +209,7 @@ update_element(body,0,&new_vdom,&self.root_node);
 ```
 
 ```rust
-fn update_element(parent:i32, child_index:usize, new_node:&VirtualDomNode, old_node:&VirtualDomNode){
+fn update_element(parent:DomNode, child_index:usize, new_node:&VirtualDomNode, old_node:&VirtualDomNode){
     //child_index represents what child of the parent we are trying to determine what to do with
     match old_node {
         VirtualDomNode::Empty => {
