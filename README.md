@@ -86,3 +86,48 @@ impl VirtualDom {
     }
 }
 ```
+
+A simple tree of DOM might be represented thus as:
+
+```rust
+VirtualDomNode::ElementNode(ElementNode{
+    node_type: "div",
+    children: vec![
+        VirtualDomNode::ElementNode(ElementNode{
+            node_type: "h1",
+            children: vec![
+                VirtualDomNode::TextNode(TextNode{
+                    text: "hello",
+                })
+            ]
+        }
+    ]
+})
+```
+
+This is a little verbose though, we we have two helper functions:
+
+```rust
+fn h(node_type:&str,children:Vec<VirtualDomNode>)->VirtualDomNode {
+    VirtualDomNode::ElementNode(ElementNode{
+        node_type: String::from(node_type),
+        children: children
+    })
+}
+
+fn t(text:&str)->VirtualDomNode {
+    VirtualDomNode::TextNode(TextNode{
+        text: String::from(text)
+    })
+}
+```
+
+So we can easily represent virtual DOM
+
+```
+h("div",vec![
+    h("h1",vec![
+        t("hello!")
+    ])
+])
+```
