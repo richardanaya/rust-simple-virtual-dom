@@ -80,6 +80,7 @@ impl VirtualDom {
 
     // Compares two virtual dom tree structures and updates the real DOM then stores the new dom tree for future comparisons
     fn render(&mut self, el:i32, new_vdom:VirtualDomNode){
+        // This is where the magic happens
         update_element(el,&new_vdom,&self.root_node,0);
         self.root_node = new_vdom;
     }
