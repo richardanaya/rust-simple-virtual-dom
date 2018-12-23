@@ -17,7 +17,7 @@ We'll be using multiple functions that pass along strings to javascript to perfo
 
 Since WASM can't pass around DOM elements directly, what we need is some sort of system for talking about the DOM we are going to operate on. In this project, whenever DOM is queried or created, we give that piece of DOM an integer ID.
 
-For instance, if we queried the `body` tag, we assign that tag a number and store that in an dictionary `number -> Element`. Let's assum the number we get for referring to the `body` is 123.  Now whenever we perform DOM operations on the body, say, setting the innerHTML. We can simply call `set_inner_html(123,"hello!")`.
+For instance, if we queried the `body` element, we assign that element a number and store that in an dictionary `number -> Element`. Let's assum the number we get for referring to the `body` is 123.  Now whenever we perform DOM operations on the body, say, setting the innerHTML. We can simply call `set_inner_html(123,"hello!")`.
 
 # Virtual DOM
 
@@ -25,6 +25,6 @@ There is a great (but incomplete article) https://medium.com/@deathmood/how-to-w
 
 The important thing to remember is that we are trying to do as minimal DOM operations as possible. Manipulating the DOM is incredibly expensive, so if we can find any way of avoiding interactions with it the better.  How virtual DOM accomplishes this is by representing our DOM as a tree of nodes. Then each time we render, we compare the tree of nodes we currently have to the new tree of nodes, and we can determine what real DOM needs to be created,removed, replaced, or modified.
 
-In this example i'm making a pretty massive simplification: *this is a virtual DOM for elements with NO attributes or event handlers*
+In this example i'm making a pretty massive simplification: **this is a virtual DOM for elements with NO attributes or event handlers**
 
 This simplification makes it alot easier to see the basic operations going on.
