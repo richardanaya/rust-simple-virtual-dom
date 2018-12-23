@@ -141,3 +141,28 @@ h("div",vec![
     ])
 ])
 ```
+
+This allows us to easily interact with our virtual DOM:
+
+```rust
+// Let's get a handle to our body element
+let body = query_selector("body");
+
+// Let's create our empty virtual dom
+let mut vd = VirtualDom::new();
+
+// Render a simple list to the body element
+vd.render(body, h("div",vec![
+    h("h1",vec![t("1")]),
+    h("h2",vec![t("2")]),
+    h("h3",vec![t("3")])
+]));
+
+// Render a new virtual dom tree to the body element that is the reverseof the list
+vd.render(body, h("div",vec![
+    h("h1",vec![t("3")]),
+    h("h2",vec![t("2")]),
+    h("h3",vec![t("1")])
+]))
+// ONLY h1 and h3's text node should change
+```
