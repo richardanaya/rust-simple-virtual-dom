@@ -169,7 +169,7 @@ vd.render(body, h("div",vec![
 
 Let's consider what happens on the first rendering.  We have a virtual dom tree with an `None` node in it, and some new virtual dom tree coming in that has elements and text. Our tree comparison is simple in this first rendering since we only have all new nodes we need to create real DOM elements for. So let's look how we might create that tree of real DOM. We have three scenerios to handle:
 
-``rust
+```rust
 fn create_element_from_node(node:&VirtualDomNode) -> i32 {
     match node {
         VirtualDomNode::ElementNode(vnode) => {
