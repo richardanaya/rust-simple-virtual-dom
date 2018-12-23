@@ -82,8 +82,7 @@ impl VirtualDom {
     // Compares two virtual dom tree structures and updates the real DOM 
     // then stores the new dom tree for future comparisons
     fn render(&mut self, el:i32, new_vdom:VirtualDomNode){
-        // This is where the magic happens
-        update_element(el,&new_vdom,&self.root_node,0);
+        // TODO: some magical comparisons that updates the contents of el
         self.root_node = new_vdom;
     }
 }
@@ -198,8 +197,16 @@ Finally once we create this tree of nodes, we simply attach the top most element
 
 The real trickiness of the virtual DOM algorithm occurs when comparing two virtual DOM trees that are structurally different. We walk down the tree of both DOMs and are looking for any differances if any and determine what to do! There aren't that many scenerios to handle. Let's take a look:
 
+```
+let body = query_selector("body");
+let start_vdom = VirtualDOM::None;
+let next_vdom = h("div", vec![t("hello!")])
+update_element(body,0,&new_vdom,&self.root_node);
+```
+
 ```rust
-fn update_element(parent:i32, new_node:&VirtualDomNode, old_node:&VirtualDomNode, index:usize){
+fn update_element(parent:i32, child_index:usize, new_node:&VirtualDomNode, old_node:&VirtualDomNode){
+    //child_index represents what child of the parent we are trying to determine what to do with
     match old_node {
         VirtualDomNode::None => {
             // If our old node was empty, the new node should be created and added to the parent
@@ -212,14 +219,14 @@ fn update_element(parent:i32, new_node:&VirtualDomNode, old_node:&VirtualDomNode
                 VirtualDomNode::None => {
                     // if a text node is being replaced with nothing
                     // just remove that real DOM child
-                    remove_child(parent,index)
+                    remove_child(parent,child_index)
                 },
                 VirtualDomNode::ElementNode(_)=> {
                     // if a text node is being replaced with an element node
                     // create that real DOM element
                     let child = create_element_from_node(new_node);
                     // and replace the text node real DOM with it
-                    replace_child(parent,child,index);
+                    replace_child(parent,child_index,child);
                 },
                 VirtualDomNode::TextNode(new_text_node)=> {
                     // If a text node is being replaced with another text node
@@ -228,7 +235,7 @@ fn update_element(parent:i32, new_node:&VirtualDomNode, old_node:&VirtualDomNode
                         // if so create a new text node real DOM
                         let child = create_element_from_node(new_node);
                         // and replace the old text node real DOM
-                        replace_child(parent,child,index);
+                        replace_child(parent,child_index,child);
                     }
                 }
             }
@@ -237,14 +244,14 @@ fn update_element(parent:i32, new_node:&VirtualDomNode, old_node:&VirtualDomNode
             match new_node {
                 // If an element is being replaced with nothing, remove the real DOM child
                 VirtualDomNode::None => {
-                    remove_child(parent,index)
+                    remove_child(parent,child_index)
                 },
                 VirtualDomNode::TextNode(_)=> {
                     // If a real dom element is being replaced with a text node
                     // create the text node
                     let child = create_element_from_node(new_node);
                     // and replace the real DOM child with it
-                    replace_child(parent,child,index);
+                    replace_child(parent,child_index,child);
                 },
                 VirtualDomNode::ElementNode(new_vnode)=> {
                     // if an element node is being replaced with another element node
@@ -253,7 +260,7 @@ fn update_element(parent:i32, new_node:&VirtualDomNode, old_node:&VirtualDomNode
                         // if they are a different element, create the new element real DOM
                         let child = create_element_from_node(new_node);
                         // replace the old element real DOM
-                        replace_child(parent,child,index);
+                        replace_child(parent,child_index,child);
                     } else {
                         // if they are the same
                         let new_length = new_vnode.children.len();
@@ -262,7 +269,7 @@ fn update_element(parent:i32, new_node:&VirtualDomNode, old_node:&VirtualDomNode
                         
                         // loop through the children nodes of both the old and new element and recursively update and replace
                         for i in 0..min_length {
-                            let child = get_child(parent,index);
+                            let child = get_child(parent,child_index);
                             update_element(
                               child,
                               &new_vnode.children[i],
@@ -280,7 +287,7 @@ fn update_element(parent:i32, new_node:&VirtualDomNode, old_node:&VirtualDomNode
                         }
                         // if we have less node children than the old node, remove excess real DOM children
                         if old_length > new_length {
-                            let child = get_child(parent,index);
+                            let child = get_child(parent,child_index);
                             for i in min_length..old_length {
                                 remove_child(child,i)
                             }
