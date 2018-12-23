@@ -89,7 +89,7 @@ struct VirtualTextNode {
 // We use an enumeration to represent these two
 // plus an empty DOM node to represent nothing
 enum VirtualDomNode {
-    None,
+    Empty,
     VirtualElementNode(VirtualElementNode),
     VirtualTextNode(VirtualTextNode),
 }
@@ -123,7 +123,7 @@ fn create_element_from_node(node: &VirtualDomNode) -> DomNode {
             let el = create_text_element(&text_node.text);
             el
         }
-        VirtualDomNode::None => {
+        VirtualDomNode::Empty => {
             let el = create_text_element("");
             el
         }
@@ -137,12 +137,12 @@ fn update_element(
     old_node: &VirtualDomNode,
 ) {
     match old_node {
-        VirtualDomNode::None => {
+        VirtualDomNode::Empty => {
             let child = create_element_from_node(&new_node);
             append_element(parent, child);
         }
         VirtualDomNode::VirtualElementNode(old_vnode) => match new_node {
-            VirtualDomNode::None => remove_child(parent, child_index),
+            VirtualDomNode::Empty => remove_child(parent, child_index),
             VirtualDomNode::VirtualElementNode(new_vnode) => {
                 if old_vnode.node_type != new_vnode.node_type {
                     let child = create_element_from_node(new_node);
@@ -176,7 +176,7 @@ fn update_element(
             }
         },
         VirtualDomNode::VirtualTextNode(old_text_node) => match new_node {
-            VirtualDomNode::None => remove_child(parent, child_index),
+            VirtualDomNode::Empty => remove_child(parent, child_index),
             VirtualDomNode::VirtualElementNode(_) => {
                 let child = create_element_from_node(new_node);
                 replace_child(parent, child_index, child);
@@ -198,7 +198,7 @@ struct VirtualDom {
 impl VirtualDom {
     fn new() -> VirtualDom {
         VirtualDom {
-            node: VirtualDomNode::None,
+            node: VirtualDomNode::Empty,
         }
     }
 

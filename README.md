@@ -65,7 +65,7 @@ struct VirtualTextNode {
 // We use an enumeration to represent these two
 // plus an empty DOM node to represent nothing
 enum VirtualDomNode {
-    None,
+    Empty,
     VirtualElementNode(VirtualElementNode),
     VirtualTextNode(VirtualTextNode),
 }
@@ -79,7 +79,7 @@ impl VirtualDom {
     // new creates an empty VirtualDom
     fn new() -> VirtualDom {
         VirtualDom {
-            node: VirtualDomNode::None
+            node: VirtualDomNode::Empty
         }
     }
 
@@ -170,7 +170,7 @@ vd.render(body, h("div",vec![
 // ONLY h1 and h3's text node should change
 ```
 
-Let's consider what happens on the first rendering.  We have a virtual dom tree with an `None` node in it, and some new virtual dom tree coming in that has elements and text. Our tree comparison is simple in this first rendering since we only have all new nodes we need to create real DOM elements for. So let's look how we might create that tree of real DOM. We have three scenerios to handle:
+Let's consider what happens on the first rendering.  We have a virtual dom tree with an `Empty` node in it, and some new virtual dom tree coming in that has elements and text. Our tree comparison is simple in this first rendering since we only have all new nodes we need to create real DOM elements for. So let's look how we might create that tree of real DOM. We have three scenerios to handle:
 
 ```rust
 fn create_element_from_node(node:&VirtualDomNode) -> i32 {
@@ -188,7 +188,7 @@ fn create_element_from_node(node:&VirtualDomNode) -> i32 {
             let el = create_text_element(&text_node.text);
             el
         },
-        VirtualDomNode::None => {
+        VirtualDomNode::Empty => {
             let el = create_text_element("");
             el
         }
@@ -203,7 +203,7 @@ The real trickiness of the virtual DOM algorithm occurs when comparing two virtu
 
 ```
 let body = query_selector("body");
-let start_vdom = VirtualDOM::None;
+let start_vdom = VirtualDOM::Empty;
 let next_vdom = h("div", vec![t("hello!")])
 update_element(body,0,&new_vdom,&self.root_node);
 ```
@@ -212,7 +212,7 @@ update_element(body,0,&new_vdom,&self.root_node);
 fn update_element(parent:i32, child_index:usize, new_node:&VirtualDomNode, old_node:&VirtualDomNode){
     //child_index represents what child of the parent we are trying to determine what to do with
     match old_node {
-        VirtualDomNode::None => {
+        VirtualDomNode::Empty => {
             // If our old node was empty, the new node should be created and added to the parent
             // This is likely what will happen on our first render
             let child = create_element_from_node(&new_node);
@@ -220,7 +220,7 @@ fn update_element(parent:i32, child_index:usize, new_node:&VirtualDomNode, old_n
         },
         VirtualDomNode::VirtualTextNode(old_text_node)=> {
             match new_node {
-                VirtualDomNode::None => {
+                VirtualDomNode::Empty => {
                     // if a text node is being replaced with nothing
                     // just remove that real DOM child
                     remove_child(parent,child_index)
@@ -247,7 +247,7 @@ fn update_element(parent:i32, child_index:usize, new_node:&VirtualDomNode, old_n
         VirtualDomNode::VirtualElementNode(old_vnode)=> {
             match new_node {
                 // If an element is being replaced with nothing, remove the real DOM child
-                VirtualDomNode::None => {
+                VirtualDomNode::Empty => {
                     remove_child(parent,child_index)
                 },
                 VirtualDomNode::VirtualTextNode(_)=> {
