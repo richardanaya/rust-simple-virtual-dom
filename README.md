@@ -166,3 +166,32 @@ vd.render(body, h("div",vec![
 ]))
 // ONLY h1 and h3's text node should change
 ```
+
+Let's consider what happens on the first rendering.  We have a virtual dom tree with an `None` node in it, and some new virtual dom tree coming in that has elements and text. Our tree comparison is simple in this first rendering since we only have all new nodes we need to create real DOM elements for. So let's look how we might create that tree of real DOM. We have three scenerios to handle:
+
+``rust
+fn create_element_from_node(node:&VirtualDomNode) -> i32 {
+    match node {
+        VirtualDomNode::ElementNode(vnode) => {
+            let el = create_element(&vnode.node_type);
+            // Recursively create child nodes as well
+            for c in vnode.children.iter() {
+                let child_element = create_element_from_node(c);
+                append_element(el,child_element);
+            }
+            el
+        },
+        VirtualDomNode::TextNode(text_node) => {
+            let el = create_text_element(&text_node.text);
+            el
+        },
+        VirtualDomNode::None => {
+            let el = create_text_element("");
+            el
+        }
+    }
+
+}
+```
+
+Finally once we create this tree of nodes, we simply attach the top most element to the body element.
