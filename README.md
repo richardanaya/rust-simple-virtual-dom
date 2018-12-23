@@ -13,6 +13,23 @@ In this project, it might be easiest to see how this is done by looking at the `
 
 We'll be using multiple functions that pass along strings to javascript to perform various DOM manipulation, so whenever you see a start and length its talking about a string being sent over the WASM-JS bridge.
 
+Example:
+
+```rust
+extern {
+    fn js_log(start:*mut c_char,len:usize);
+    ...
+}
+
+pub fn log(msg:&str) {
+    let s = CString::new(msg).unwrap();
+    let l = msg.len();
+    unsafe {
+        js_log(s.into_raw(),l);
+    }
+}
+```
+
 # DOM management
 
 Since WASM can't pass around DOM elements directly, what we need is some sort of system for talking about the DOM we are going to operate on. In this project, whenever DOM is queried or created, we give that piece of DOM an integer ID.
@@ -27,4 +44,44 @@ The important thing to remember is that we are trying to do as minimal DOM opera
 
 In this example i'm making a pretty massive simplification: **this is a virtual DOM for elements with NO attributes or event handlers**
 
-This simplification makes it alot easier to see the basic operations going on.
+This simplification makes it alot easier to see the basic operations going on. In Rust we represent VirtualDom as follows.
+
+```Rust
+struct ElementNode {
+    node_type: String,
+    children: Vec<VirtualDomNode>
+}
+
+// TextNode represents text that is mixed in with elements
+struct TextNode {
+    text: String,
+}
+
+// We use an enumeration to represent these two
+// plus an empty DOM node to represent nothing
+enum VirtualDomNode {
+    None,
+    ElementNode(ElementNode),
+    TextNode(TextNode),
+}
+
+// VirtualDom represents a virtual dom tree
+struct VirtualDom {
+    root_node:VirtualDomNode
+}
+
+impl VirtualDom {
+    // new creates an empty VirtualDom
+    fn new() -> VirtualDom {
+        VirtualDom {
+            root_node: VirtualDomNode::None
+        }
+    }
+
+    // Compares two virtual dom tree structures and updates the real DOM then stores the new dom tree for future comparisons
+    fn render(&mut self, el:i32, new_vdom:VirtualDomNode){
+        update_element(el,&new_vdom,&self.root_node,0);
+        self.root_node = new_vdom;
+    }
+}
+```
