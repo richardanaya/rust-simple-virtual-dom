@@ -36,6 +36,10 @@ Since WASM can't pass around DOM elements directly, what we need is some sort of
 
 For instance, if we queried the `body` element, we assign that element a number and store that in an dictionary `number -> Element`. Let's assum the number we get for referring to the `body` is 123.  Now whenever we perform DOM operations on the body, say, setting the innerHTML. We can simply call `set_inner_html(123,"hello!")`.
 
+```rust
+type DomNode = i32;
+```
+
 # Virtual DOM
 
 There is a great (but incomplete article) https://medium.com/@deathmood/how-to-write-your-own-virtual-dom-ee74acc13060 that describe the process of creating a Virtual DOM from scratch.
@@ -47,14 +51,14 @@ In this example i'm making a pretty massive simplification: **this is a virtual 
 This simplification makes it alot easier to see the basic operations going on. In Rust we represent VirtualDom as follows.
 
 ```Rust
-// ElementNode represents an html element
-struct ElementNode {
+// VirtualElementNode represents an html element
+struct VirtualElementNode {
     node_type: String,
     children: Vec<VirtualDomNode>
 }
 
-// TextNode represents text that is mixed in with elements
-struct TextNode {
+// VirtualTextNode represents text that is mixed in with elements
+struct VirtualTextNode {
     text: String,
 }
 
@@ -62,28 +66,28 @@ struct TextNode {
 // plus an empty DOM node to represent nothing
 enum VirtualDomNode {
     None,
-    ElementNode(ElementNode),
-    TextNode(TextNode),
+    VirtualElementNode(VirtualElementNode),
+    VirtualTextNode(VirtualTextNode),
 }
 
 // VirtualDom represents a virtual dom tree
 struct VirtualDom {
-    root_node:VirtualDomNode
+    node:VirtualDomNode
 }
 
 impl VirtualDom {
     // new creates an empty VirtualDom
     fn new() -> VirtualDom {
         VirtualDom {
-            root_node: VirtualDomNode::None
+            node: VirtualDomNode::None
         }
     }
 
-    // Compares two virtual dom tree structures and updates the real DOM 
+    // Compares two virtual dom tree structures and updates the real DOM
     // then stores the new dom tree for future comparisons
-    fn render(&mut self, el:i32, new_vdom:VirtualDomNode){
+    fn render(&mut self, el:i32, new_node:VirtualDomNode){
         // TODO: some magical comparisons that updates the contents of el
-        self.root_node = new_vdom;
+        self.node = new_node;
     }
 }
 ```
@@ -99,13 +103,13 @@ For a simple html:
 A simple tree of DOM might be represented thus as:
 
 ```rust
-VirtualDomNode::ElementNode(ElementNode{
+VirtualDomNode::VirtualElementNode(VirtualElementNode{
     node_type: String::from("div"),
     children: vec![
-        VirtualDomNode::ElementNode(ElementNode{
+        VirtualDomNode::VirtualElementNode(VirtualElementNode{
             node_type: String::from("h1"),
             children: vec![
-                VirtualDomNode::TextNode(TextNode{
+                VirtualDomNode::VirtualTextNode(VirtualTextNode{
                     text: String::from("hello"),
                 })
             ]
@@ -118,14 +122,14 @@ This is a little verbose though, we we have two helper functions:
 
 ```rust
 fn h(node_type:&str,children:Vec<VirtualDomNode>)->VirtualDomNode {
-    VirtualDomNode::ElementNode(ElementNode{
+    VirtualDomNode::VirtualElementNode(VirtualElementNode{
         node_type: String::from(node_type),
         children: children
     })
 }
 
 fn t(text:&str)->VirtualDomNode {
-    VirtualDomNode::TextNode(TextNode{
+    VirtualDomNode::VirtualTextNode(VirtualTextNode{
         text: String::from(text)
     })
 }
@@ -171,7 +175,7 @@ Let's consider what happens on the first rendering.  We have a virtual dom tree 
 ```rust
 fn create_element_from_node(node:&VirtualDomNode) -> i32 {
     match node {
-        VirtualDomNode::ElementNode(vnode) => {
+        VirtualDomNode::VirtualElementNode(vnode) => {
             let el = create_element(&vnode.node_type);
             // Recursively create child nodes as well
             for c in vnode.children.iter() {
@@ -180,7 +184,7 @@ fn create_element_from_node(node:&VirtualDomNode) -> i32 {
             }
             el
         },
-        VirtualDomNode::TextNode(text_node) => {
+        VirtualDomNode::VirtualTextNode(text_node) => {
             let el = create_text_element(&text_node.text);
             el
         },
@@ -214,21 +218,21 @@ fn update_element(parent:i32, child_index:usize, new_node:&VirtualDomNode, old_n
             let child = create_element_from_node(&new_node);
             append_element(parent,child);
         },
-        VirtualDomNode::TextNode(old_text_node)=> {
+        VirtualDomNode::VirtualTextNode(old_text_node)=> {
             match new_node {
                 VirtualDomNode::None => {
                     // if a text node is being replaced with nothing
                     // just remove that real DOM child
                     remove_child(parent,child_index)
                 },
-                VirtualDomNode::ElementNode(_)=> {
+                VirtualDomNode::VirtualElementNode(_)=> {
                     // if a text node is being replaced with an element node
                     // create that real DOM element
                     let child = create_element_from_node(new_node);
                     // and replace the text node real DOM with it
                     replace_child(parent,child_index,child);
                 },
-                VirtualDomNode::TextNode(new_text_node)=> {
+                VirtualDomNode::VirtualTextNode(new_text_node)=> {
                     // If a text node is being replaced with another text node
                     // Check if they are different
                     if old_text_node.text != new_text_node.text {
@@ -240,20 +244,20 @@ fn update_element(parent:i32, child_index:usize, new_node:&VirtualDomNode, old_n
                 }
             }
         },
-        VirtualDomNode::ElementNode(old_vnode)=> {
+        VirtualDomNode::VirtualElementNode(old_vnode)=> {
             match new_node {
                 // If an element is being replaced with nothing, remove the real DOM child
                 VirtualDomNode::None => {
                     remove_child(parent,child_index)
                 },
-                VirtualDomNode::TextNode(_)=> {
+                VirtualDomNode::VirtualTextNode(_)=> {
                     // If a real dom element is being replaced with a text node
                     // create the text node
                     let child = create_element_from_node(new_node);
                     // and replace the real DOM child with it
                     replace_child(parent,child_index,child);
                 },
-                VirtualDomNode::ElementNode(new_vnode)=> {
+                VirtualDomNode::VirtualElementNode(new_vnode)=> {
                     // if an element node is being replaced with another element node
                     // see if they are even the same elemen
                     if old_vnode.node_type != new_vnode.node_type {
@@ -266,7 +270,7 @@ fn update_element(parent:i32, child_index:usize, new_node:&VirtualDomNode, old_n
                         let new_length = new_vnode.children.len();
                         let old_length = old_vnode.children.len();
                         let min_length = cmp::min(new_length,old_length);
-                        
+
                         // loop through the children nodes of both the old and new element and recursively update and replace
                         for i in 0..min_length {
                             let child = get_child(parent,child_index);

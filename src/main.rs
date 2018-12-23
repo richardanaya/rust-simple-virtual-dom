@@ -11,15 +11,18 @@ use std::os::raw::c_char;
 // to DOM elements that exist in javascript. Look for a variable named
 // elementCache.
 
+// DomNode represents a handle to a real DOM node
+type DomNode = i32;
+
 extern "C" {
     fn js_log(start: *mut c_char, len: usize);
-    fn js_query_selector(start: *mut c_char, len: usize) -> i32;
-    fn js_create_element(start: *mut c_char, len: usize) -> i32;
-    fn js_create_text_element(start: *mut c_char, len: usize) -> i32;
-    fn js_append_element(parent: i32, child: i32);
-    fn js_remove_child(parent: i32, child_index: usize);
-    fn js_replace_child(parent: i32, child_index: usize, child: i32);
-    fn js_get_child(parent: i32, child_index: usize) -> i32;
+    fn js_query_selector(start: *mut c_char, len: usize) -> DomNode;
+    fn js_create_element(start: *mut c_char, len: usize) -> DomNode;
+    fn js_create_text_element(start: *mut c_char, len: usize) -> DomNode;
+    fn js_append_element(parent: DomNode, child: DomNode);
+    fn js_remove_child(parent: DomNode, child_index: usize);
+    fn js_replace_child(parent: DomNode, child_index: usize, child: DomNode);
+    fn js_get_child(parent: DomNode, child_index: usize) -> DomNode;
 }
 
 pub fn log(msg: &str) {
@@ -30,56 +33,56 @@ pub fn log(msg: &str) {
     }
 }
 
-pub fn query_selector(msg: &str) -> i32 {
+pub fn query_selector(msg: &str) -> DomNode {
     let s = CString::new(msg).unwrap();
     let l = msg.len();
     unsafe { js_query_selector(s.into_raw(), l) }
 }
 
-fn create_element(msg: &str) -> i32 {
+fn create_element(msg: &str) -> DomNode {
     let s = CString::new(msg).unwrap();
     let l = msg.len();
     unsafe { js_create_element(s.into_raw(), l) }
 }
 
-fn create_text_element(msg: &str) -> i32 {
+fn create_text_element(msg: &str) -> DomNode {
     let s = CString::new(msg).unwrap();
     let l = msg.len();
     unsafe { js_create_text_element(s.into_raw(), l) }
 }
 
-fn append_element(parent: i32, child: i32) {
+fn append_element(parent: DomNode, child: DomNode) {
     unsafe {
         js_append_element(parent, child);
     }
 }
 
-fn remove_child(parent: i32, child_index: usize) {
+fn remove_child(parent: DomNode, child_index: usize) {
     unsafe {
         js_remove_child(parent, child_index);
     }
 }
 
-fn replace_child(parent: i32, child_index: usize, child: i32) {
+fn replace_child(parent: DomNode, child_index: usize, child: DomNode) {
     unsafe {
         js_replace_child(parent, child_index, child);
     }
 }
 
-fn get_child(parent: i32, child_index: usize) -> i32 {
+fn get_child(parent: DomNode, child_index: usize) -> DomNode {
     unsafe { js_get_child(parent, child_index) }
 }
 
 // A virtual dom tree is comprised of two types of nodes
 
-// ElementNode represents a DOM element (div, h1, etc.)
-struct ElementNode {
+// VirtualElementNode represents a DOM element (div, h1, etc.)
+struct VirtualElementNode {
     node_type: String,
     children: Vec<VirtualDomNode>,
 }
 
-// TextNode represents text that is mixed in with elements
-struct TextNode {
+// VirtualTextNode represents text that is mixed in with elements
+struct VirtualTextNode {
     text: String,
 }
 
@@ -87,28 +90,28 @@ struct TextNode {
 // plus an empty DOM node to represent nothing
 enum VirtualDomNode {
     None,
-    ElementNode(ElementNode),
-    TextNode(TextNode),
+    VirtualElementNode(VirtualElementNode),
+    VirtualTextNode(VirtualTextNode),
 }
 
 // These are helper functions to create virtual dom nodes
 fn h(node_type: &str, children: Vec<VirtualDomNode>) -> VirtualDomNode {
-    VirtualDomNode::ElementNode(ElementNode {
+    VirtualDomNode::VirtualElementNode(VirtualElementNode {
         node_type: String::from(node_type),
         children: children,
     })
 }
 
 fn t(text: &str) -> VirtualDomNode {
-    VirtualDomNode::TextNode(TextNode {
+    VirtualDomNode::VirtualTextNode(VirtualTextNode {
         text: String::from(text),
     })
 }
 
 // create_element_from_node is a helper for creating real DOM from virtual DOM
-fn create_element_from_node(node: &VirtualDomNode) -> i32 {
+fn create_element_from_node(node: &VirtualDomNode) -> DomNode {
     match node {
-        VirtualDomNode::ElementNode(vnode) => {
+        VirtualDomNode::VirtualElementNode(vnode) => {
             let el = create_element(&vnode.node_type);
             for c in vnode.children.iter() {
                 let child_element = create_element_from_node(c);
@@ -116,7 +119,7 @@ fn create_element_from_node(node: &VirtualDomNode) -> i32 {
             }
             el
         }
-        VirtualDomNode::TextNode(text_node) => {
+        VirtualDomNode::VirtualTextNode(text_node) => {
             let el = create_text_element(&text_node.text);
             el
         }
@@ -128,7 +131,7 @@ fn create_element_from_node(node: &VirtualDomNode) -> i32 {
 }
 
 fn update_element(
-    parent: i32,
+    parent: DomNode,
     child_index: usize,
     new_node: &VirtualDomNode,
     old_node: &VirtualDomNode,
@@ -138,9 +141,9 @@ fn update_element(
             let child = create_element_from_node(&new_node);
             append_element(parent, child);
         }
-        VirtualDomNode::ElementNode(old_vnode) => match new_node {
+        VirtualDomNode::VirtualElementNode(old_vnode) => match new_node {
             VirtualDomNode::None => remove_child(parent, child_index),
-            VirtualDomNode::ElementNode(new_vnode) => {
+            VirtualDomNode::VirtualElementNode(new_vnode) => {
                 if old_vnode.node_type != new_vnode.node_type {
                     let child = create_element_from_node(new_node);
                     replace_child(parent, child_index, child);
@@ -167,18 +170,18 @@ fn update_element(
                     }
                 }
             }
-            VirtualDomNode::TextNode(_) => {
+            VirtualDomNode::VirtualTextNode(_) => {
                 let child = create_element_from_node(new_node);
                 replace_child(parent, child_index, child);
             }
         },
-        VirtualDomNode::TextNode(old_text_node) => match new_node {
+        VirtualDomNode::VirtualTextNode(old_text_node) => match new_node {
             VirtualDomNode::None => remove_child(parent, child_index),
-            VirtualDomNode::ElementNode(_) => {
+            VirtualDomNode::VirtualElementNode(_) => {
                 let child = create_element_from_node(new_node);
                 replace_child(parent, child_index, child);
             }
-            VirtualDomNode::TextNode(new_text_node) => {
+            VirtualDomNode::VirtualTextNode(new_text_node) => {
                 if old_text_node.text != new_text_node.text {
                     let child = create_element_from_node(new_node);
                     replace_child(parent, child_index, child);
@@ -189,19 +192,19 @@ fn update_element(
 }
 
 struct VirtualDom {
-    root_node: VirtualDomNode,
+    node: VirtualDomNode,
 }
 
 impl VirtualDom {
     fn new() -> VirtualDom {
         VirtualDom {
-            root_node: VirtualDomNode::None,
+            node: VirtualDomNode::None,
         }
     }
 
-    fn render(&mut self, el: i32, new_vdom: VirtualDomNode) {
-        update_element(el, 0, &new_vdom, &self.root_node);
-        self.root_node = new_vdom;
+    fn render(&mut self, el: DomNode, new_node: VirtualDomNode) {
+        update_element(el, 0, &new_node, &self.node);
+        self.node = new_node;
     }
 }
 
