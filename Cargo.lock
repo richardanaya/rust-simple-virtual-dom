@@ -1,0 +1,4 @@
+[[package]]
+name = "simple-virtual-dom"
+version = "0.1.0"
+
