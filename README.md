@@ -272,9 +272,9 @@ fn update_element(parent:i32, child_index:usize, new_node:&VirtualDomNode, old_n
                             let child = get_child(parent,child_index);
                             update_element(
                               child,
+                              i,
                               &new_vnode.children[i],
-                              &old_vnode.children[i],
-                              i
+                              &old_vnode.children[i]
                             );
                         }
                         // if we have more node children on the new element add them to the real DOM
