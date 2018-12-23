@@ -279,7 +279,7 @@ fn update_element(parent:i32, child_index:usize, new_node:&VirtualDomNode, old_n
                         }
                         // if we have more node children on the new element add them to the real DOM
                         if new_length > old_length {
-                            let child = get_child(parent,index);
+                            let child = get_child(parent,child_index);
                             for i in min_length..new_length {
                                 let new_child = create_element_from_node(&new_vnode.children[i]);
                                 append_element(child,new_child);
