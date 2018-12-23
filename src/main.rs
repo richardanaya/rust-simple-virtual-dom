@@ -3,6 +3,14 @@ use std::ffi::CString;
 use std::os::raw::c_char;
 use std::cmp;
 
+// We're going to need a number of helper functions to talk to javascript
+// so we can create, remove, modify our elements. Since in WASM you can
+// only pass around numbers, some of these functions hand off memory
+// positions of strings.
+// Also, since we can't pass around elements, was pass around int32 handles
+// to DOM elements that exist in javascript. Look for a variable named
+// elementCache.
+
 extern {
     fn js_log(start:*mut c_char,len:usize);
     fn js_query_selector(start:*mut c_char,len:usize) -> i32;
@@ -47,10 +55,8 @@ fn create_text_element(msg:&str) -> i32{
 }
 
 fn append_element(parent:i32,child:i32) {
-    if child != -1 {
-        unsafe {
-            js_append_element(parent,child);
-        }
+    unsafe {
+        js_append_element(parent,child);
     }
 }
 
@@ -72,37 +78,45 @@ fn get_child(parent:i32, index:usize) -> i32 {
     }
 }
 
-struct VNode {
+// A virtual dom tree is comprised of two types of nodes
+
+// ElementNode represents a DOM element (div, h1, etc.)
+struct ElementNode {
     node_type: String,
-    children: Vec<H>
+    children: Vec<VirtualDomNode>
 }
 
+// TextNode represents text that is mixed in with elements
 struct TextNode {
     text: String,
 }
 
-enum H {
+// We use an enumeration to represent these two
+// plus an empty DOM node to represent nothing
+enum VirtualDomNode {
     None,
-    VNode(VNode),
+    ElementNode(ElementNode),
     TextNode(TextNode),
 }
 
-fn h(node_type:&str,children:Vec<H>)->H {
-    H::VNode(VNode{
+// These are helper functions to create virtual dom nodes
+fn h(node_type:&str,children:Vec<VirtualDomNode>)->VirtualDomNode {
+    VirtualDomNode::ElementNode(ElementNode{
         node_type: String::from(node_type),
         children: children
     })
 }
 
-fn t(text:&str)->H {
-    H::TextNode(TextNode{
+fn t(text:&str)->VirtualDomNode {
+    VirtualDomNode::TextNode(TextNode{
         text: String::from(text)
     })
 }
 
-fn create_element_from_node(node:&H) -> i32 {
+// create_element_from_node is a helper for creating real DOM from virtual DOM
+fn create_element_from_node(node:&VirtualDomNode) -> i32 {
     match node {
-        H::VNode(vnode) => {
+        VirtualDomNode::ElementNode(vnode) => {
             let el = create_element(&vnode.node_type);
             for c in vnode.children.iter() {
                 let child_element = create_element_from_node(c);
@@ -110,31 +124,30 @@ fn create_element_from_node(node:&H) -> i32 {
             }
             el
         },
-        H::TextNode(text_node) => {
+        VirtualDomNode::TextNode(text_node) => {
             let el = create_text_element(&text_node.text);
             el
         },
-        _ => -1,
+        VirtualDomNode::None => {
+            let el = create_text_element("");
+            el
+        }
     }
 
 }
 
-fn update_element(parent:i32, new_node:&H, old_node:&H, index:usize){
-    log(&format!("parent {}",parent));
+fn update_element(parent:i32, new_node:&VirtualDomNode, old_node:&VirtualDomNode, index:usize){
     match old_node {
-        H::None => {
+        VirtualDomNode::None => {
             let child = create_element_from_node(&new_node);
             append_element(parent,child);
         },
-        H::VNode(old_vnode)=> {
-            let p2 = parent;
-            log(&format!("here {} {}",parent,p2));
-
+        VirtualDomNode::ElementNode(old_vnode)=> {
             match new_node {
-                H::None => {
+                VirtualDomNode::None => {
                     remove_child(parent,index)
                 },
-                H::VNode(new_vnode)=> {
+                VirtualDomNode::ElementNode(new_vnode)=> {
                     if old_vnode.node_type != new_vnode.node_type {
                         let child = create_element_from_node(new_node);
                         replace_child(parent,child,index);
@@ -143,7 +156,6 @@ fn update_element(parent:i32, new_node:&H, old_node:&H, index:usize){
                         let old_length = old_vnode.children.len();
                         let min_length = cmp::min(new_length,old_length);
                         for i in 0..min_length {
-                            log(&format!("same now check children {} {}",parent,i));
                             let child = get_child(parent,index);
                             update_element(
                               child,
@@ -167,22 +179,22 @@ fn update_element(parent:i32, new_node:&H, old_node:&H, index:usize){
                         }
                     }
                 },
-                H::TextNode(_)=> {
+                VirtualDomNode::TextNode(_)=> {
                     let child = create_element_from_node(new_node);
                     replace_child(parent,child,index);
                 }
             }
         },
-        H::TextNode(old_text_node)=> {
+        VirtualDomNode::TextNode(old_text_node)=> {
             match new_node {
-                H::None => {
+                VirtualDomNode::None => {
                     remove_child(parent,index)
                 },
-                H::VNode(_)=> {
+                VirtualDomNode::ElementNode(_)=> {
                     let child = create_element_from_node(new_node);
                     replace_child(parent,child,index);
                 },
-                H::TextNode(new_text_node)=> {
+                VirtualDomNode::TextNode(new_text_node)=> {
                     if old_text_node.text != new_text_node.text {
                         let child = create_element_from_node(new_node);
                         replace_child(parent,child,index);
@@ -193,24 +205,43 @@ fn update_element(parent:i32, new_node:&H, old_node:&H, index:usize){
     }
 }
 
+struct VirtualDom {
+    root_node:VirtualDomNode
+}
+
+impl VirtualDom {
+    fn new() -> VirtualDom {
+        VirtualDom {
+            root_node: VirtualDomNode::None
+        }
+    }
+
+    fn render(&mut self, el:i32, new_vdom:VirtualDomNode){
+        update_element(el,&new_vdom,&self.root_node,0);
+        self.root_node = new_vdom;
+    }
+}
+
+
 #[no_mangle]
 pub fn start() -> () {
+    // Let's get a handle to our body element
     let body = query_selector("body");
-    let mut current_vdom = H::None;
 
-    let mut n = h("div",vec![
+    // Let's create our empty virtual dom
+    let mut vd = VirtualDom::new();
+
+    // Render a simple list to the body element
+    vd.render(body, h("div",vec![
         h("h1",vec![t("1")]),
         h("h2",vec![t("2")]),
         h("h3",vec![t("3")])
-    ]);
-    update_element(body,&n,&current_vdom,0);
+    ]));
 
-    current_vdom = n;
-    n = h("div",vec![
-        h("h3",vec![t("3")]),
+    // Render a new virtual dom tree to the body element
+    vd.render(body, h("div",vec![
+        h("h1",vec![t("3")]),
         h("h2",vec![t("2")]),
-        h("h1",vec![t("1")]),
-        h("h5",vec![t("2")])
-    ]);
-    update_element(body,&n,&current_vdom,0);
+        h("h3",vec![t("1")])
+    ]))
 }
