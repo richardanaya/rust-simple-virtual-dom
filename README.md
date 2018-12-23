@@ -91,13 +91,13 @@ A simple tree of DOM might be represented thus as:
 
 ```rust
 VirtualDomNode::ElementNode(ElementNode{
-    node_type: "div",
+    node_type: String::from("div"),
     children: vec![
         VirtualDomNode::ElementNode(ElementNode{
-            node_type: "h1",
+            node_type: String::from("h1"),
             children: vec![
                 VirtualDomNode::TextNode(TextNode{
-                    text: "hello",
+                    text: String::from("hello"),
                 })
             ]
         }
@@ -124,7 +124,7 @@ fn t(text:&str)->VirtualDomNode {
 
 So we can easily represent virtual DOM
 
-```
+```rust
 h("div",vec![
     h("h1",vec![
         t("hello!")
