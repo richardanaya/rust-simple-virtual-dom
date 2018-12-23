@@ -23,6 +23,7 @@ extern "C" {
     fn js_remove_child(parent: DomNode, child_index: usize);
     fn js_replace_child(parent: DomNode, child_index: usize, child: DomNode);
     fn js_get_child(parent: DomNode, child_index: usize) -> DomNode;
+    fn js_clear_cache();
 }
 
 pub fn log(msg: &str) {
@@ -71,6 +72,10 @@ fn replace_child(parent: DomNode, child_index: usize, child: DomNode) {
 
 fn get_child(parent: DomNode, child_index: usize) -> DomNode {
     unsafe { js_get_child(parent, child_index) }
+}
+
+fn clear_cache() {
+    unsafe { js_clear_cache(); }
 }
 
 // A virtual dom tree is comprised of two types of nodes
@@ -202,23 +207,22 @@ impl VirtualDom {
         }
     }
 
-    fn render(&mut self, el: DomNode, new_node: VirtualDomNode) {
-        update_element(el, 0, &new_node, &self.node);
+    fn render(&mut self, target_selector: &str, new_node: VirtualDomNode) {
+        let target = query_selector(target_selector);
+        update_element(target, 0, &new_node, &self.node);
         self.node = new_node;
+        clear_cache()
     }
 }
 
 #[no_mangle]
 pub fn start() -> () {
-    // Let's get a handle to our body element
-    let body = query_selector("body");
-
     // Let's create our empty virtual dom
     let mut vd = VirtualDom::new();
 
     // Render a simple list to the body element
     vd.render(
-        body,
+        "body",
         h(
             "div",
             vec![
@@ -231,7 +235,7 @@ pub fn start() -> () {
 
     // Render a new virtual dom tree to the body element
     vd.render(
-        body,
+        "body",
         h(
             "div",
             vec![

@@ -70,6 +70,9 @@ fetch('target/wasm32-unknown-unknown/release/simple-virtual-dom.wasm')
      var childElement = elementCache[child];
      parentElement.replaceChild(childElement,parentElement.childNodes[childIndex]);
    },
+   js_clear_cache: function(){
+     elementCache = [];
+   }
  }
 }))
 .then(results => {
